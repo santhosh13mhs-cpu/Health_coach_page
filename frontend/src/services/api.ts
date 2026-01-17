@@ -19,10 +19,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle auth errors
+// Handle auth errors and API connectivity issues
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors (backend not available)
+    if (!error.response && (error.message === 'Network Error' || error.code === 'ERR_NETWORK')) {
+      console.error('Backend API is not available. Please check your VITE_API_URL environment variable.')
+      // Don't throw error on network issues during initial auth check
+      if (error.config?.url && !error.config.url.includes('/auth/current-user')) {
+        return Promise.reject(new Error('Unable to connect to the server. Please check your connection or contact support.'))
+      }
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -32,6 +40,10 @@ api.interceptors.response.use(
     if (error.response?.status === 403) {
       console.error('403 Forbidden:', error.response?.data)
       // Don't redirect on 403, just show error
+    }
+    // Handle 404 errors - might be backend not deployed
+    if (error.response?.status === 404 && error.config?.url?.includes('/api/')) {
+      console.warn('API endpoint not found. Ensure backend is deployed and VITE_API_URL is configured correctly.')
     }
     return Promise.reject(error)
   }
