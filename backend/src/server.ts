@@ -31,6 +31,26 @@ initializeDatabase().then(() => {
   process.exit(1)
 })
 
+// API info endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'API is running',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      otp: '/api/otp',
+      users: '/api/users',
+      userTasks: '/api/user-tasks',
+      leads: '/api/leads',
+      coaches: '/api/coaches',
+      upload: '/api/upload',
+      tasks: '/api/tasks',
+      documents: '/api/documents'
+    },
+    health: '/health'
+  })
+})
+
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/otp', otpRoutes)
