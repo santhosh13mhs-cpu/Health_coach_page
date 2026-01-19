@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ai-diet-plan-backend
+    env: node
+    # If Root Directory is set to "backend" in Render settings, use:
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    # If Root Directory is NOT set (project root), use:
+    # buildCommand: cd backend && npm install && npm run build
+    # startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
