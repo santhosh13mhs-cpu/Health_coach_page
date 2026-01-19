@@ -1,12 +1,9 @@
 {
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
-  "framework": "vite",
-  "cleanUrls": true,
-  "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/((?!api|_next|.*\\..*).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
