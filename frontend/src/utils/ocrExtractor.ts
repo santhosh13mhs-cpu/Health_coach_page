@@ -85,7 +85,7 @@ export async function extractDataFromImage(file: File): Promise<ExtractedData> {
             const imageFile = new File([blob], `page-${i + 1}.png`, { type: 'image/png' })
             try {
               const { data } = await Tesseract.recognize(imageFile, 'eng', {
-                logger: (m) => {
+                logger: (m: { status: string; progress: number }) => {
                   if (m.status === 'recognizing text') {
                     console.log(`OCR Progress (Page ${i + 1}): ${Math.round(m.progress * 100)}%`)
                   }
@@ -113,7 +113,7 @@ export async function extractDataFromImage(file: File): Promise<ExtractedData> {
     } else {
       // For regular images, use Tesseract directly
       const { data } = await Tesseract.recognize(file, 'eng', {
-        logger: (m) => {
+        logger: (m: { status: string; progress: number }) => {
           if (m.status === 'recognizing text') {
             console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
           }
