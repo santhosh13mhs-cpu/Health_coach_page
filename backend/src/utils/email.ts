@@ -6,7 +6,7 @@ export async function sendOTPEmail(email: string, otp: string): Promise<void> {
     // In development mode, just log to console
     // In production, this will send actual emails
     if (process.env.NODE_ENV === 'production' && process.env.EMAIL_SERVICE_ENABLED === 'true') {
-      // Production email sending with Nodemailer or other service
+      // Production email sending with Nodemailer
       const nodemailer = await import('nodemailer')
       
       const transporter = nodemailer.default.createTransport({

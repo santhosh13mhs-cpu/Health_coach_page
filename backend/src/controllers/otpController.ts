@@ -119,10 +119,11 @@ export const generateOTP = async (req: Request, res: Response) => {
       console.error('⚠️ Error sending OTP email:', emailError)
       // In development, continue even if email fails (OTP is logged to console)
       // In production, we might want to fail the request if email is critical
-      if (process.env.NODE_ENV === 'production' && process.env.EMAIL_SERVICE_ENABLED === 'true') {
+      const isProduction = process.env.NODE_ENV === 'production'
+      if (isProduction && process.env.EMAIL_SERVICE_ENABLED === 'true') {
         return res.status(500).json({ 
           error: 'Failed to send OTP email. Please try again later.',
-          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+          details: !isProduction ? emailError.message : undefined
         })
       }
       // In development, log the OTP so user can still test
