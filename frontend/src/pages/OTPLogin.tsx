@@ -16,6 +16,7 @@ export default function OTPLogin() {
   const [otpExpiresAt, setOtpExpiresAt] = useState<Date | null>(null)
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null)
   const [shake, setShake] = useState(false)
+  const [isEmailNotFound, setIsEmailNotFound] = useState(false)
   const otpInputRef = useRef<HTMLInputElement>(null)
   const { loginWithOTP } = useAuth()
   const navigate = useNavigate()
@@ -61,6 +62,7 @@ export default function OTPLogin() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setIsEmailNotFound(false)
     setLoading(true)
 
     try {
@@ -71,17 +73,20 @@ export default function OTPLogin() {
         setOtpExpiresAt(new Date(response.data.expires_at))
       }
       setError('')
+      setIsEmailNotFound(false)
     } catch (err: any) {
       console.error('OTP generation error:', err)
       
       let errorMessage = 'Failed to send OTP'
+      let emailNotFound = false
       
       if (err.response) {
         // Server responded with error
         errorMessage = err.response.data?.error || 'Failed to send OTP'
         
         if (err.response.status === 404) {
-          errorMessage = err.response.data?.error || 'Email not found. Please contact admin.'
+          emailNotFound = true
+          errorMessage = 'This email is not registered in our system.'
         } else if (err.response.status === 429) {
           errorMessage = err.response.data?.error || 'Too many requests. Please try again later.'
           if (err.response.data?.retryAfter) {
@@ -101,6 +106,7 @@ export default function OTPLogin() {
       }
       
       setError(errorMessage)
+      setIsEmailNotFound(emailNotFound)
       triggerShake()
     } finally {
       setLoading(false)
@@ -184,6 +190,7 @@ export default function OTPLogin() {
     setStep('email')
     setOtp('')
     setError('')
+    setIsEmailNotFound(false)
     setOtpExpiresAt(null)
     setRemainingAttempts(null)
   }
@@ -310,9 +317,37 @@ export default function OTPLogin() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
-                          className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-lg"
+                          className={`${
+                            isEmailNotFound
+                              ? 'bg-blue-50 border-l-4 border-blue-500 text-blue-800'
+                              : 'bg-red-50 border-l-4 border-red-500 text-red-700'
+                          } p-4 rounded-lg`}
                         >
-                          <p className="text-sm font-medium">{error}</p>
+                          <p className="text-sm font-medium mb-2">{error}</p>
+                          {isEmailNotFound && (
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs text-blue-700">
+                                Don't have an account? You can sign up to create one.
+                              </p>
+                              <Link
+                                to="/signup"
+                                className="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                              >
+                                <span>Create an account</span>
+                                <motion.svg
+                                  className="ml-1 w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                  initial={{ x: 0 }}
+                                  whileHover={{ x: 4 }}
+                                  transition={{ type: 'spring', stiffness: 400 }}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </motion.svg>
+                              </Link>
+                            </div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
