@@ -441,6 +441,35 @@ export async function initializeDatabase() {
     }
 
     console.log('Database initialized successfully')
+    
+    // Optional: Create default admin user if no users exist (only in development)
+    if (process.env.NODE_ENV !== 'production' && process.env.CREATE_DEFAULT_ADMIN !== 'false') {
+      try {
+        const userCount = await dbAll(database, 'SELECT COUNT(*) as count FROM users')
+        const count = (userCount[0] as any)?.count || 0
+        
+        if (count === 0) {
+          console.log('📝 No users found. Creating default admin user...')
+          const bcrypt = await import('bcryptjs')
+          const defaultEmail = 'santhosh.13mhs@gmail.com'
+          const defaultPassword = 'admin123'
+          const hashedPassword = await bcrypt.default.hash(defaultPassword, 10)
+          
+          await dbRun(
+            database,
+            'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
+            ['Admin User', defaultEmail, hashedPassword, 'ADMIN']
+          )
+          
+          console.log('✅ Default admin user created:')
+          console.log(`   Email: ${defaultEmail}`)
+          console.log(`   Password: ${defaultPassword} (⚠️ Change this in production!)`)
+        }
+      } catch (seedError: any) {
+        // Don't fail database initialization if seeding fails
+        console.log('Note: Could not create default admin user:', seedError.message)
+      }
+    }
   } catch (err) {
     console.error('Error initializing database:', err)
   }
