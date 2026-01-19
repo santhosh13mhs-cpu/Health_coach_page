@@ -72,13 +72,36 @@ export default function OTPLogin() {
       }
       setError('')
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to send OTP'
+      console.error('OTP generation error:', err)
+      
+      let errorMessage = 'Failed to send OTP'
+      
+      if (err.response) {
+        // Server responded with error
+        errorMessage = err.response.data?.error || 'Failed to send OTP'
+        
+        if (err.response.status === 404) {
+          errorMessage = err.response.data?.error || 'Email not found. Please contact admin.'
+        } else if (err.response.status === 429) {
+          errorMessage = err.response.data?.error || 'Too many requests. Please try again later.'
+          if (err.response.data?.retryAfter) {
+            setResendCooldown(err.response.data.retryAfter * 60)
+          }
+        } else if (err.response.status === 500) {
+          errorMessage = err.response.data?.error || 'Server error. Please try again later.'
+        }
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Unable to connect to server. Please check your internet connection.'
+        console.error('Network error - no response from server:', err.message)
+      } else {
+        // Something else happened
+        errorMessage = err.message || 'An unexpected error occurred. Please try again.'
+        console.error('Unexpected error:', err)
+      }
+      
       setError(errorMessage)
       triggerShake()
-      
-      if (err.response?.status === 429 && err.response?.data?.retryAfter) {
-        setResendCooldown(err.response.data.retryAfter * 60)
-      }
     } finally {
       setLoading(false)
     }

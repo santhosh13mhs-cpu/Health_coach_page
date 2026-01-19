@@ -114,9 +114,19 @@ export const generateOTP = async (req: Request, res: Response) => {
     // Send OTP email
     try {
       await sendOTPEmail(normalizedEmail, otp)
-    } catch (emailError) {
-      console.error('Error sending OTP email:', emailError)
-      // Continue even if email fails (for development)
+      console.log(`✅ OTP generated and sent successfully for: ${normalizedEmail}`)
+    } catch (emailError: any) {
+      console.error('⚠️ Error sending OTP email:', emailError)
+      // In development, continue even if email fails (OTP is logged to console)
+      // In production, we might want to fail the request if email is critical
+      if (process.env.NODE_ENV === 'production' && process.env.EMAIL_SERVICE_ENABLED === 'true') {
+        return res.status(500).json({ 
+          error: 'Failed to send OTP email. Please try again later.',
+          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
+        })
+      }
+      // In development, log the OTP so user can still test
+      console.log(`📝 Development mode: OTP for ${normalizedEmail} is: ${otp}`)
     }
 
     res.json({
@@ -127,10 +137,19 @@ export const generateOTP = async (req: Request, res: Response) => {
       ...(process.env.NODE_ENV !== 'production' && { otp: otp })
     })
   } catch (error: any) {
-    console.error('Error generating OTP:', error)
+    console.error('❌ Error generating OTP:', error)
     console.error('Error details:', error.message, error.stack)
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to generate OTP'
+    if (error.message?.includes('database') || error.message?.includes('SQL')) {
+      errorMessage = 'Database error. Please try again later.'
+    } else if (error.message?.includes('email')) {
+      errorMessage = 'Email service error. Please try again later.'
+    }
+    
     res.status(500).json({ 
-      error: 'Failed to generate OTP',
+      error: errorMessage,
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     })
   }
