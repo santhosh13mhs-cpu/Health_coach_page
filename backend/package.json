@@ -4,20 +4,27 @@
   "description": "Backend API for AI Diet Plan application",
   "main": "dist/server.js",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && node check-build.js",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx seed-database.ts"
+    "seed": "tsx seed-database.ts",
+    "verify-supabase": "tsx verify-supabase.ts",
+    "migrate-to-supabase": "tsx migrate-to-supabase.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.8",
+    "pg": "^8.11.3",
     "sqlite3": "^5.1.6",
     "xlsx": "^0.18.5"
   },
@@ -29,6 +36,7 @@
     "@types/multer": "^1.4.11",
     "@types/node": "^20.10.5",
     "@types/nodemailer": "^6.4.14",
+    "@types/pg": "^8.10.9",
     "@types/sqlite3": "^3.1.11",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

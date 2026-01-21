@@ -1,22 +1,16 @@
-import sqlite3 from 'sqlite3'
 import bcrypt from 'bcryptjs'
-import { join } from 'path'
-import { getDatabase, dbGet, dbAll, dbRun } from './src/database/db.js'
-import { initializeDatabase } from './src/database/db.js'
-
-// Promise-based wrapper for db.all
-const dbAllPromise = (database: sqlite3.Database, sql: string, params: any[] = []) => {
-  return new Promise<any[]>((resolve, reject) => {
-    database.all(sql, params, (err, rows) => {
-      if (err) reject(err)
-      else resolve(rows || [])
-    })
-  })
-}
+import { getDatabase, dbGet, dbAll, dbRun, initializeDatabase, initializeDatabaseConnection, getDatabaseType } from './src/database/db.js'
 
 async function seedDatabase() {
   try {
     console.log('🌱 Initializing database...')
+    
+    // Initialize connection first
+    initializeDatabaseConnection()
+    const dbType = getDatabaseType()
+    console.log(`📊 Using database: ${dbType === 'postgresql' ? 'PostgreSQL/Supabase' : 'SQLite'}`)
+    
+    // Then initialize schema
     await initializeDatabase()
     
     const db = getDatabase()
@@ -51,7 +45,7 @@ async function seedDatabase() {
     }
 
     // Get all users
-    const allUsers = await dbAllPromise(db, 'SELECT id, name, email, role FROM users ORDER BY created_at')
+    const allUsers = await dbAll(db, 'SELECT id, name, email, role FROM users ORDER BY created_at')
     
     console.log(`\n📊 Total users in database: ${allUsers.length}`)
     

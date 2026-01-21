@@ -1,72 +1,21 @@
-import sqlite3 from 'sqlite3'
-import { join } from 'path'
-import { promisify } from 'util'
-
-let db: sqlite3.Database | null = null
-
-export function getDatabase(): sqlite3.Database {
-  if (!db) {
-    const dbPath = join(process.cwd(), 'database.sqlite')
-    db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('Error opening database:', err)
-      }
-    })
-    // Enable foreign keys
-    db.run('PRAGMA foreign_keys = ON')
-  }
-  return db
-}
-
-// Promise-based wrappers
-export const dbRun = (database: sqlite3.Database, sql: string, params: any[] = []) => {
-  return new Promise<{ lastID?: number; changes: number }>((resolve, reject) => {
-    database.run(sql, params, function (err) {
-      if (err) reject(err)
-      else resolve({ lastID: this.lastID, changes: this.changes })
-    })
-  })
-}
-
-export const dbGet = (database: sqlite3.Database, sql: string, params: any[] = []) => {
-  return new Promise<any>((resolve, reject) => {
-    database.get(sql, params, (err, row) => {
-      if (err) reject(err)
-      else resolve(row)
-    })
-  })
-}
-
-export const dbAll = (database: sqlite3.Database, sql: string, params: any[] = []) => {
-  return new Promise<any[]>((resolve, reject) => {
-    database.all(sql, params, (err, rows) => {
-      if (err) reject(err)
-      else resolve(rows || [])
-    })
-  })
-}
-
-export const dbExec = (database: sqlite3.Database, sql: string) => {
-  return new Promise<void>((resolve, reject) => {
-    database.exec(sql, (err) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
-}
-
-// Helper function to check if a column exists in a table
-export async function columnExists(tableName: string, columnName: string): Promise<boolean> {
-  const db = getDatabase()
-  try {
-    const columns = await dbAll(db, `PRAGMA table_info(${tableName})`)
-    return columns.some((col: any) => col.name === columnName)
-  } catch {
-    return false
-  }
-}
+// Re-export from adapter for backward compatibility
+export {
+  getDatabase,
+  dbRun,
+  dbGet,
+  dbAll,
+  dbExec,
+  columnExists,
+  getDatabaseType,
+  initializeDatabaseConnection,
+  closeDatabase,
+  type DatabaseConnection,
+  type DatabaseType,
+} from './db-adapter.js'
 
 export async function initializeDatabase() {
+  // Initialize connection (will use SQLite or PostgreSQL based on DATABASE_URL)
+  initializeDatabaseConnection()
   const database = getDatabase()
 
   try {
