@@ -2,6 +2,15 @@
 import sqlite3 from 'sqlite3'
 import { join } from 'path'
 import { Pool, Client } from 'pg'
+import dns from 'dns'
+
+// Prefer IPv4 results first to avoid IPv6-only connectivity issues
+// (common on some networks where AAAA resolves but IPv6 routing is blocked).
+try {
+  dns.setDefaultResultOrder('ipv4first')
+} catch {
+  // Older Node versions may not support this; ignore and rely on OS settings.
+}
 
 export type DatabaseType = 'sqlite' | 'postgresql'
 export type DatabaseConnection = sqlite3.Database | Pool | Client
@@ -227,6 +236,46 @@ export async function columnExists(tableName: string, columnName: string): Promi
       return false
     }
   }
+}
+
+// Optimized: Check multiple columns at once (reduces database queries)
+export async function columnsExist(tableName: string, columnNames: string[]): Promise<Record<string, boolean>> {
+  const db = getDatabase()
+  const result: Record<string, boolean> = {}
+  
+  // Initialize all to false
+  columnNames.forEach(col => { result[col] = false })
+
+  if (dbType === 'sqlite') {
+    try {
+      const columns = await dbAll(db, `PRAGMA table_info(${tableName})`)
+      const existingColumns = new Set(columns.map((col: any) => col.name))
+      columnNames.forEach(col => {
+        result[col] = existingColumns.has(col)
+      })
+    } catch {
+      // If table doesn't exist, all columns are false
+    }
+  } else {
+    // PostgreSQL - batch query
+    try {
+      const placeholders = columnNames.map((_, i) => `$${i + 2}`).join(', ')
+      const query = `
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND column_name IN (${placeholders})
+      `
+      const existingColumns = await dbAll(db, query, [tableName.toLowerCase(), ...columnNames.map(c => c.toLowerCase())])
+      const existingSet = new Set(existingColumns.map((row: any) => row.column_name?.toLowerCase()))
+      columnNames.forEach(col => {
+        result[col] = existingSet.has(col.toLowerCase())
+      })
+    } catch {
+      // If table doesn't exist, all columns are false
+    }
+  }
+  
+  return result
 }
 
 // Close database connection

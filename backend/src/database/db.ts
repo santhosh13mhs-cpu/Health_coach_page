@@ -6,11 +6,24 @@ export {
   dbAll,
   dbExec,
   columnExists,
+  columnsExist,
   getDatabaseType,
   initializeDatabaseConnection,
   closeDatabase,
   type DatabaseConnection,
   type DatabaseType,
+} from './db-adapter.js'
+
+// Import for internal use in this module
+import {
+  getDatabase,
+  dbRun,
+  dbGet,
+  dbAll,
+  dbExec,
+  columnExists,
+  columnsExist,
+  initializeDatabaseConnection,
 } from './db-adapter.js'
 
 export async function initializeDatabase() {
@@ -88,21 +101,24 @@ export async function initializeDatabase() {
       );
     `)
 
+    // Optimized: Batch check all tasks table columns at once
+    const tasksColumns = await columnsExist('tasks', [
+      'assigned_by', 'start_date', 'end_date', 'allow_document_upload', 
+      'report_type', 'status', 'completed_at'
+    ])
+
     // Migration: Add assigned_by column if it doesn't exist
-    const hasAssignedBy = await columnExists('tasks', 'assigned_by')
-    if (!hasAssignedBy) {
+    if (!tasksColumns.assigned_by) {
       try {
         await dbRun(database, 'ALTER TABLE tasks ADD COLUMN assigned_by INTEGER', [])
         console.log('Migration: Added assigned_by column to tasks table')
       } catch (err: any) {
-        // Column might already exist or table might not exist yet
         console.log('Migration note on assigned_by:', err.message)
       }
     }
 
     // Migration: Add start_date and end_date columns if they don't exist
-    const hasStartDate = await columnExists('tasks', 'start_date')
-    if (!hasStartDate) {
+    if (!tasksColumns.start_date) {
       try {
         await dbRun(database, 'ALTER TABLE tasks ADD COLUMN start_date DATETIME', [])
         // Set start_date to created_at for existing tasks
@@ -113,8 +129,7 @@ export async function initializeDatabase() {
       }
     }
 
-    const hasEndDate = await columnExists('tasks', 'end_date')
-    if (!hasEndDate) {
+    if (!tasksColumns.end_date) {
       try {
         await dbRun(database, 'ALTER TABLE tasks ADD COLUMN end_date DATETIME', [])
         // Set end_date to deadline for existing tasks
@@ -126,8 +141,7 @@ export async function initializeDatabase() {
     }
 
     // Migration: Add allow_document_upload and report_type columns if they don't exist
-    const hasAllowDocUpload = await columnExists('tasks', 'allow_document_upload')
-    if (!hasAllowDocUpload) {
+    if (!tasksColumns.allow_document_upload) {
       try {
         await dbRun(database, 'ALTER TABLE tasks ADD COLUMN allow_document_upload INTEGER NOT NULL DEFAULT 0', [])
         console.log('Migration: Added allow_document_upload column to tasks table')
@@ -136,8 +150,7 @@ export async function initializeDatabase() {
       }
     }
 
-    const hasReportType = await columnExists('tasks', 'report_type')
-    if (!hasReportType) {
+    if (!tasksColumns.report_type) {
       try {
         await dbRun(database, 'ALTER TABLE tasks ADD COLUMN report_type TEXT', [])
         console.log('Migration: Added report_type column to tasks table')
@@ -147,20 +160,20 @@ export async function initializeDatabase() {
     }
 
     // Check for old status column (deprecated, using user_tasks.status now)
-    const hasStatus = await columnExists('tasks', 'status')
-    if (hasStatus) {
+    if (tasksColumns.status) {
       console.log('Note: tasks table has old status column - using user_tasks.status instead')
     }
 
     // Check for old completed_at column (deprecated, using user_tasks.completed_at now)
-    const hasCompletedAt = await columnExists('tasks', 'completed_at')
-    if (hasCompletedAt) {
+    if (tasksColumns.completed_at) {
       console.log('Note: tasks table has old completed_at column - using user_tasks.completed_at instead')
     }
 
+    // Optimized: Batch check user_tasks columns
+    const userTasksColumns = await columnsExist('user_tasks', ['remarks', 'done_date'])
+
     // Migration: Add remarks and done_date columns if they don't exist
-    const hasRemarks = await columnExists('user_tasks', 'remarks')
-    if (!hasRemarks) {
+    if (!userTasksColumns.remarks) {
       try {
         await dbRun(database, 'ALTER TABLE user_tasks ADD COLUMN remarks TEXT', [])
         console.log('Migration: Added remarks column to user_tasks table')
@@ -169,8 +182,7 @@ export async function initializeDatabase() {
       }
     }
 
-    const hasDoneDate = await columnExists('user_tasks', 'done_date')
-    if (!hasDoneDate) {
+    if (!userTasksColumns.done_date) {
       try {
         await dbRun(database, 'ALTER TABLE user_tasks ADD COLUMN done_date DATETIME', [])
         console.log('Migration: Added done_date column to user_tasks table')
@@ -280,17 +292,17 @@ export async function initializeDatabase() {
     `)
 
     // Migrations for existing databases: add columns for per-user scoping of documents/report_data
-    // Check if task_documents table exists first
+    // Optimized: Batch check if tables and columns exist
     const taskDocsTableExists = await columnExists('task_documents', 'id')
     if (taskDocsTableExists) {
-      const hasTaskDocsUserTaskId = await columnExists('task_documents', 'user_task_id')
-      if (!hasTaskDocsUserTaskId) {
+      const taskDocsColumns = await columnsExist('task_documents', ['user_task_id', 'user_id'])
+      
+      if (!taskDocsColumns.user_task_id) {
         try {
           await dbRun(database, 'ALTER TABLE task_documents ADD COLUMN user_task_id INTEGER', [])
           console.log('✅ Migration: Added user_task_id column to task_documents table')
         } catch (err: any) {
           console.error('❌ Migration error on task_documents.user_task_id:', err.message)
-          // If column already exists, that's okay
           if (!err.message.includes('duplicate column') && !err.message.includes('duplicate column name')) {
             console.error('Failed to add user_task_id column. Please restart the server.')
           }
@@ -299,8 +311,7 @@ export async function initializeDatabase() {
         console.log('✓ task_documents.user_task_id column already exists')
       }
 
-      const hasTaskDocsUserId = await columnExists('task_documents', 'user_id')
-      if (!hasTaskDocsUserId) {
+      if (!taskDocsColumns.user_id) {
         try {
           await dbRun(database, 'ALTER TABLE task_documents ADD COLUMN user_id INTEGER', [])
           console.log('✅ Migration: Added user_id column to task_documents table')
@@ -315,11 +326,12 @@ export async function initializeDatabase() {
       }
     }
 
-    // Check if report_data table exists first
+    // Optimized: Batch check report_data table columns
     const reportDataTableExists = await columnExists('report_data', 'id')
     if (reportDataTableExists) {
-      const hasReportUserTaskId = await columnExists('report_data', 'user_task_id')
-      if (!hasReportUserTaskId) {
+      const reportDataColumns = await columnsExist('report_data', ['user_task_id', 'user_id', 'total_cholesterol'])
+      
+      if (!reportDataColumns.user_task_id) {
         try {
           await dbRun(database, 'ALTER TABLE report_data ADD COLUMN user_task_id INTEGER', [])
           console.log('✅ Migration: Added user_task_id column to report_data table')
@@ -333,8 +345,7 @@ export async function initializeDatabase() {
         console.log('✓ report_data.user_task_id column already exists')
       }
 
-      const hasReportUserId = await columnExists('report_data', 'user_id')
-      if (!hasReportUserId) {
+      if (!reportDataColumns.user_id) {
         try {
           await dbRun(database, 'ALTER TABLE report_data ADD COLUMN user_id INTEGER', [])
           console.log('✅ Migration: Added user_id column to report_data table')
@@ -348,8 +359,7 @@ export async function initializeDatabase() {
         console.log('✓ report_data.user_id column already exists')
       }
 
-      const hasTotalChol = await columnExists('report_data', 'total_cholesterol')
-      if (!hasTotalChol) {
+      if (!reportDataColumns.total_cholesterol) {
         try {
           await dbRun(database, 'ALTER TABLE report_data ADD COLUMN total_cholesterol TEXT', [])
           console.log('✅ Migration: Added total_cholesterol column to report_data table')

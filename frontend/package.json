@@ -6,6 +6,9 @@
   "engines": {
     "node": "20.x"
   },
+  "overrides": {
+    "boolean": "3.2.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

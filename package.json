@@ -10,7 +10,14 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:backend": "npm run build --prefix backend",
     "build:frontend": "npm run build --prefix frontend",
-    "build": "npm run build:backend && npm run build:frontend"
+    "build": "npm run build:backend && npm run build:frontend",
+    "verify-supabase": "cd backend && npm run verify-supabase",
+    "verify-supabse": "cd backend && npm run verify-supabase",
+    "verify-supabes": "cd backend && npm run verify-supabase",
+    "verify-subabase": "cd backend && npm run verify-supabase",
+    "verify-supab": "cd backend && npm run verify-supabase",
+    "migrate-to-supabase": "cd backend && npm run migrate-to-supabase",
+    "setup-database": "powershell -ExecutionPolicy Bypass -File setup-database-url.ps1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
